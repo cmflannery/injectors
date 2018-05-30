@@ -4,7 +4,7 @@ import warnings
 
 
 class SwirlElement():
-    def __init__(self, elementType, initialConditions, version=False):
+    def __init__(self, elementType, initialConditions, version=1):
         """ SwirlElement() aids in the design of coaxial swirl elements for bipropellant
         injection.
 
@@ -21,11 +21,13 @@ class SwirlElement():
         Units:
             Meters, Kilograms, Degrees, Kelvin
         """
-        if version and version != 1 and version != 2:
+        if version:
+            version = int(version)
+        if version != 1 and version != 2:
             raise ValueError('version is an optional parameter and can only be 1 or 2, see Bazarov for help')
         self.version = version
         elementType = elementType.lower()
-        validElementTypes = ['internal mixing', 'external mixing']
+        validElementTypes = ['internal', 'external']
         if elementType not in validElementTypes:
             raise TypeError('elementType, %s, is not a valid type' % elementType)
         self.elementType = elementType
@@ -80,9 +82,15 @@ class SwirlElement():
 
         if (2*alpha1 - 2*alpha2 < 10) or (2*alpha1 - 2*alpha2 > 15):
             warnings.warn('Spray Cone Angles not valid. See Bazarov pg. 73')
-    
+
     def design(self):
-        """ start the design process """
+        """ Start the design process """
+        if self.elementType == 'external' and self.version == 1:
+            self.version1internal()
+
+    
+    def version1internal(self):
+        """ Internal mixing version 1 design process """
         # determine the Geometric Characteristic Parameter for each stage
         print('Use empirical figures 34a and b for the following calculations')
         while True:
@@ -105,7 +113,7 @@ class SwirlElement():
             Rein2 = self.Rein(self.mdot2,self.n2,rin2,self.rho2,self.nu2)
 
             if Rein1 and Rein2 > 10^4: # convergence condition
-                break            
+                break
 
         print('\nRein1 = %.2f\nRein2 = %.2f' % (Rein1, Rein2))
         print('\nRn1 = %.5f cm\nRn2 = %.5f cm' % (Rn1*100, Rn2*100))
@@ -113,13 +121,22 @@ class SwirlElement():
         print('\nrin1 = %.5f cm\nrin2 = %.5f cm' %(rin1*100, rin2*100))
 
     def Rn(self, mdot, rho, deltaP, mu):
-        """ Calculate the nozzle radius """
-        return 0.475*(mdot/(mu*np.sqrt(rho*deltaP)))
+        """ Calculate the nozzle radius
+
+            Bazarov Eq. 103
+        """
+        return 0.475*np.sqrt(mdot/(mu*np.sqrt(rho*deltaP)))
 
     def rin(self, Rn, Rin, n, A):
-        """ Calculate the radius of the inlet passages """
+        """ Calculate the radius of the inlet passages
+        
+            Bazarov Eq. 104
+        """
         return np.sqrt(Rin*Rn/(n*A))
 
     def Rein(self, mdot, n, rin, rho, nu):
-        """ Calculate the reynolds number in the inlet passages """
+        """ Calculate the reynolds number in the inlet passages
+        
+            Bazarov Eq. 101
+        """
         return 2*mdot/(np.pi*np.sqrt(n)*rin*rho*nu)
